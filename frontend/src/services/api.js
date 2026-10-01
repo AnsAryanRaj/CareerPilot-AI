@@ -70,6 +70,7 @@ export const uploadResume = (formData) => {
 };
 export const getResumeHistory = () => api.get("/resumes/history");
 export const downloadResumeReport = (resumeId) => api.get(`/resumes/${resumeId}/report`);
+export const deleteResume = (resumeId) => api.delete(`/resumes/${resumeId}`);
 
 // Mock Interviews
 export const startMockInterview = (role, company, interviewType) => api.post("/interviews/start", { role, company, interviewType });

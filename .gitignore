@@ -1,0 +1,47 @@
+# =========================
+# Environment / Secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# Firebase credentials
+firebase-service-account.json
+serviceAccountKey.json
+firebase-adminsdk*.json
+
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# =========================
+# Python logs
+# =========================
+*.log
+logs/
+
+# =========================
+# Node / Frontend
+# =========================
+node_modules/
+dist/
+.vite/
+
+# =========================
+# IDE
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db

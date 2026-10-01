@@ -7,7 +7,7 @@ from google.genai import types
 from app.core.config import settings
 from app.core.exceptions import AIException
 from app.prompts.resume_prompts import RESUME_ANALYSIS_SYSTEM_INSTRUCTION, RESUME_ANALYSIS_USER_TEMPLATE
-from app.parsers.resume_parsers import ResumeAnalysisOutputModel
+from app.parsers.resume_parsers import ResumeAnalysisOutputModel, CompleteResumeAnalysisModel
 from app.prompts.interview_prompts import INTERVIEW_QUESTION_SYSTEM_INSTRUCTION, INTERVIEW_EVALUATION_SYSTEM_INSTRUCTION
 from app.parsers.interview_parsers import InterviewEvaluationOutputModel
 from app.prompts.roadmap_prompts import ROADMAP_GENERATOR_SYSTEM_INSTRUCTION, ROADMAP_GENERATOR_USER_TEMPLATE
@@ -116,6 +116,131 @@ def analyze_resume_text(resume_text: str, target_role: str, experience_level: st
         return json.loads(result_json)
     except Exception as e:
         logger.error("Gemini API resume analysis failed: %s", str(e))
+        raise AIException(f"Failed to analyze resume with AI: {str(e)}")
+
+def analyze_resume(resume_text: str) -> dict:
+    """Analyze resume text and return structured analysis matching CompleteResumeAnalysisModel."""
+    client = get_gemini_client()
+    import re
+    
+    system_instruction = (
+        "You are an expert ATS (Applicant Tracking System) Resume Analyzer and Career Coach. "
+        "Your task is to analyze the candidate's resume text and provide a thorough, structured audit. "
+        "Evaluate technical competency, written presentation, layout quality, and career suggestions. "
+        "You must return ONLY a valid JSON payload matching the requested response schema."
+    )
+    
+    if client is None:
+        logger.info("Running complete resume analysis in Mock Mode (Synthesized Dynamic Response)...")
+        text_lower = resume_text.lower()
+        
+        # Calculate dynamic scores based on actual file characteristics
+        overall_score = 72
+        tech_score = 70
+        grammar_score = 88
+        comm_score = 75
+        ats_score = 68
+        
+        # Keyword matching
+        all_keywords = ["python", "fastapi", "react", "docker", "kubernetes", "aws", "sql", "git", "java", "typescript", "graphql", "rust", "go", "ci/cd", "terraform"]
+        detected = [kw for kw in all_keywords if kw in text_lower]
+        missing = [kw for kw in all_keywords if kw not in text_lower]
+        
+        # Adjust scores based on detected skills
+        tech_score += len(detected) * 2
+        tech_score = min(tech_score, 98)
+        
+        # Adjust overall and ATS
+        overall_score = int((tech_score + grammar_score + comm_score) / 3)
+        ats_score = int(overall_score - (len(missing) * 1.5))
+        ats_score = max(55, min(ats_score, 98))
+        
+        # Detected numbers / metrics
+        metrics_count = len(re.findall(r'\d+', resume_text))
+        if metrics_count > 10:
+            overall_score += 3
+            
+        overall_score = min(overall_score, 98)
+        
+        # Dynamic strengths and weaknesses
+        strengths = []
+        if detected:
+            strengths.append(f"Strong technical listing featuring key target technologies: {', '.join([k.capitalize() for k in detected[:3]])}.")
+        else:
+            strengths.append("Clear educational background and basic skill listings.")
+            
+        if len(resume_text) > 2000:
+            strengths.append("Thorough detail level in professional experience blocks.")
+        else:
+            strengths.append("Concise resume layout with clear sections.")
+            
+        weaknesses = []
+        if metrics_count < 5:
+            weaknesses.append("Lack of quantitative outcomes or metrics in project and role descriptions.")
+        if len(missing) > 5:
+            weaknesses.append("Missing crucial modern deployment and containerization keywords.")
+            
+        # Recommended Projects
+        rec_projects = []
+        if "docker" not in detected:
+            rec_projects.append("Containerize an existing API using Docker and set up automated local staging.")
+        if "fastapi" not in detected:
+            rec_projects.append("Build a high-performance microservice using FastAPI and integrate clean routing.")
+        if not rec_projects:
+            rec_projects.append("Design a distributed analytics engine with caching and message queues.")
+            
+        # Recommended Certifications
+        rec_certs = []
+        if "aws" not in detected:
+            rec_certs.append("AWS Certified Developer - Associate")
+        if "kubernetes" not in detected:
+            rec_certs.append("Certified Kubernetes Administrator (CKA)")
+        if not rec_certs:
+            rec_certs.append("HashiCorp Certified: Terraform Associate")
+            
+        # Practice Interview Questions
+        questions = []
+        if "react" in detected:
+            questions.append("Can you explain how the virtual DOM works and when to use React.memo?")
+        if "fastapi" in detected:
+            questions.append("How do you handle dependency injection and async/await pools in FastAPI?")
+        if not questions:
+            questions.append("Explain the difference between class-based and functional programming paradigms.")
+        questions.append("Tell me about a technical challenge you faced and how you overcame it.")
+
+        return {
+            "overallScore": overall_score,
+            "atsScore": ats_score,
+            "grammarScore": grammar_score,
+            "technicalScore": tech_score,
+            "communicationScore": comm_score,
+            "resumeSummary": (
+                f"Candidate exhibits core skills in {', '.join([k.capitalize() for k in detected[:4]]) if detected else 'general software programming'}. "
+                "The profile fits software development frameworks but can be improved with containerization details."
+            ),
+            "strengths": strengths,
+            "weaknesses": weaknesses,
+            "missingSkills": [m.capitalize() for m in missing[:5]],
+            "recommendedProjects": rec_projects,
+            "recommendedCertifications": rec_certs,
+            "careerSuggestions": ["Backend Engineer", "Software Developer", "Full Stack Developer"],
+            "interviewQuestions": questions
+        }
+        
+    try:
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=f"Analyze the following resume content:\n\n{resume_text}",
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                response_mime_type="application/json",
+                response_schema=CompleteResumeAnalysisModel,
+                temperature=0.2
+            )
+        )
+        return json.loads(response.text)
+    except Exception as e:
+        logger.error("Gemini complete resume analysis failed: %s", str(e))
         raise AIException(f"Failed to analyze resume with AI: {str(e)}")
 
 def generate_next_interview_question(role: str, company: str, history: list, interview_type: str = "TECHNICAL") -> str:

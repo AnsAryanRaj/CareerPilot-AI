@@ -7,48 +7,47 @@
 @layer base {
   body {
     font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
   }
   
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', system-ui, sans-serif;
   }
   
-  /* Custom modern dark scrollbar */
+  /* Custom modern light scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #090d16;
+    background: #f1f5f9;
   }
   ::-webkit-scrollbar-thumb {
-    background: #1e293b;
+    background: #cbd5e1;
     border-radius: 4px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #334155;
+    background: #94a3b8;
   }
 }
 
 @layer components {
-  /* Premium Glassmorphic Card */
+  /* Clean Light SaaS Card */
   .glass-card {
-    background: rgba(17, 25, 40, 0.65);
-    backdrop-filter: blur(16px) saturate(180%);
-    -webkit-backdrop-filter: blur(16px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05);
     border-radius: 16px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s ease-in-out;
   }
   
   .glass-card:hover {
-    border-color: rgba(99, 102, 241, 0.25);
-    box-shadow: 0 12px 40px 0 rgba(99, 102, 241, 0.1);
-    transform: translateY(-2px);
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px 0 rgba(15, 23, 42, 0.07);
   }
   
-  /* Subtle glow indicator */
+  /* Subtle light accent background */
   .glow-purple {
     position: relative;
   }
@@ -60,58 +59,59 @@
     transform: translate(-50%, -50%);
     width: 100%;
     height: 100%;
-    background: radial-gradient(circle, rgba(168, 85, 247, 0.15) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(37, 99, 235, 0.06) 0%, transparent 70%);
     filter: blur(20px);
     z-index: -1;
     pointer-events: none;
   }
 
-  /* Glass Input Fields */
+  /* Clean Input Fields */
   .glass-input {
-    background: rgba(15, 23, 42, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #f3f4f6;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    color: #0f172a;
     border-radius: 10px;
     padding: 10px 14px;
     outline: none;
     transition: all 0.2s ease-in-out;
   }
   .glass-input:focus {
-    border-color: #6366f1;
-    background: rgba(15, 23, 42, 0.85);
-    box-shadow: 0 0 12px rgba(99, 102, 241, 0.25);
+    border-color: #2563eb;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
   }
 
-  /* Premium Buttons */
+  /* Professional Primary SaaS Buttons */
   .btn-primary {
-    background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    background: #2563eb;
     color: #ffffff;
     font-weight: 500;
     padding: 10px 20px;
     border-radius: 10px;
-    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 2px 0 rgba(37, 99, 235, 0.2);
+    transition: all 0.2s ease-in-out;
   }
   .btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.55);
-    opacity: 0.95;
+    background: #1d4ed8;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
   }
   .btn-primary:active {
     transform: translateY(1px);
   }
 
+  /* Secondary Buttons */
   .btn-secondary {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #f3f4f6;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    color: #334155;
     font-weight: 500;
     padding: 10px 20px;
     border-radius: 10px;
     transition: all 0.2s ease-in-out;
   }
   .btn-secondary:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #0f172a;
   }
 }

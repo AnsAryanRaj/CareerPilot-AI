@@ -162,7 +162,7 @@ def onboard_user_profile(uid: str, target_role: str, target_companies: list, exp
         raise DatabaseException(f"Failed to onboard user: {str(e)}")
 
 def save_resume_analysis(user_id: str, file_name: str, raw_text: str, analysis_result: dict) -> dict:
-    """Saves a resume analysis evaluation in Firestore, falling back to local memory if Firestore is unavailable."""
+    """Saves a complete resume analysis evaluation in Firestore under collection 'resume_history'."""
     db = get_firestore_client()
     import uuid
     from datetime import datetime
@@ -173,50 +173,52 @@ def save_resume_analysis(user_id: str, file_name: str, raw_text: str, analysis_r
         "userId": user_id,
         "fileName": file_name,
         "rawText": raw_text[:5000],  # Keep raw text within bounds
-        "overallScore": analysis_result.get("overallScore"),
-        "atsScore": analysis_result.get("atsScore", 0),
-        "metrics": analysis_result.get("metrics"),
-        "feedback": analysis_result.get("feedback"),
-        "analyzedAt": datetime.utcnow().isoformat()  # standard ISO string for consistency
+        "uploadedAt": datetime.utcnow().isoformat(),
+        "analysis": analysis_result,
+        "scores": {
+            "overallScore": analysis_result.get("overallScore", 0),
+            "atsScore": analysis_result.get("atsScore", 0),
+            "grammarScore": analysis_result.get("grammarScore", 0),
+            "technicalScore": analysis_result.get("technicalScore", 0),
+            "communicationScore": analysis_result.get("communicationScore", 0)
+        }
     }
     
     if db is None:
-        if "resumes" not in _in_memory_db:
-            _in_memory_db["resumes"] = []
-        _in_memory_db["resumes"].append(doc_data)
+        if "resume_history" not in _in_memory_db:
+            _in_memory_db["resume_history"] = []
+        _in_memory_db["resume_history"].append(doc_data)
         return doc_data
         
     try:
-        db.collection("resumes").document(resume_id).set(doc_data)
+        db.collection("resume_history").document(resume_id).set(doc_data)
         return doc_data
     except Exception as e:
-        logger.error("Failed to save resume in Firestore: %s. Saving to cache.", str(e))
-        if "resumes" not in _in_memory_db:
-            _in_memory_db["resumes"] = []
-        _in_memory_db["resumes"].append(doc_data)
+        logger.error("Failed to save resume in Firestore resume_history: %s. Saving to cache.", str(e))
+        if "resume_history" not in _in_memory_db:
+            _in_memory_db["resume_history"] = []
+        _in_memory_db["resume_history"].append(doc_data)
         return doc_data
 
 def get_user_resumes(user_id: str) -> list:
-    """Retrieves all past resume reviews for a user, sorted by date in memory for resilience."""
+    """Retrieves all past resume reviews for a user from 'resume_history'."""
     db = get_firestore_client()
     if db is None:
-        res = [r for r in _in_memory_db.get("resumes", []) if r.get("userId") == user_id]
-        res.sort(key=lambda x: x.get("analyzedAt", ""), reverse=True)
+        res = [r for r in _in_memory_db.get("resume_history", []) if r.get("userId") == user_id]
+        res.sort(key=lambda x: x.get("uploadedAt", ""), reverse=True)
         return res
         
     try:
-        docs = db.collection("resumes").where("userId", "==", user_id).stream()
+        docs = db.collection("resume_history").where("userId", "==", user_id).stream()
         resumes = []
         for doc in docs:
-            d = doc.to_dict()
-            resumes.append(d)
-        # Sort in memory to avoid index requirements in Firestore console
-        resumes.sort(key=lambda x: x.get("analyzedAt", ""), reverse=True)
+            resumes.append(doc.to_dict())
+        resumes.sort(key=lambda x: x.get("uploadedAt", ""), reverse=True)
         return resumes
     except Exception as e:
-        logger.error("Failed to query resumes in Firestore: %s. Falling back to local cache.", str(e))
-        res = [r for r in _in_memory_db.get("resumes", []) if r.get("userId") == user_id]
-        res.sort(key=lambda x: x.get("analyzedAt", ""), reverse=True)
+        logger.error("Failed to query resume_history in Firestore: %s. Falling back to local cache.", str(e))
+        res = [r for r in _in_memory_db.get("resume_history", []) if r.get("userId") == user_id]
+        res.sort(key=lambda x: x.get("uploadedAt", ""), reverse=True)
         return res
 
 def create_interview_session(user_id: str, role: str, company: str, first_question: str, interview_type: str = "TECHNICAL") -> dict:
@@ -561,19 +563,38 @@ def get_user_interviews(user_id: str) -> list:
         return [i for i in _in_memory_db.get("interviews", {}).values() if i.get("userId") == user_id]
 
 def get_resume_analysis(resume_id: str) -> dict | None:
-    """Retrieves a single resume analysis details by ID."""
+    """Retrieves a single resume analysis details by ID from 'resume_history'."""
     db = get_firestore_client()
     if db is None:
-        return next((r for r in _in_memory_db.get("resumes", []) if r.get("resumeId") == resume_id), None)
+        return next((r for r in _in_memory_db.get("resume_history", []) if r.get("resumeId") == resume_id), None)
         
     try:
-        doc = db.collection("resumes").document(resume_id).get()
+        doc = db.collection("resume_history").document(resume_id).get()
         if doc.exists:
             return doc.to_dict()
-        return next((r for r in _in_memory_db.get("resumes", []) if r.get("resumeId") == resume_id), None)
+        return next((r for r in _in_memory_db.get("resume_history", []) if r.get("resumeId") == resume_id), None)
     except Exception as e:
         logger.error("Failed to retrieve resume from Firestore: %s", str(e))
-        return next((r for r in _in_memory_db.get("resumes", []) if r.get("resumeId") == resume_id), None)
+        return next((r for r in _in_memory_db.get("resume_history", []) if r.get("resumeId") == resume_id), None)
+
+def delete_resume_analysis(resume_id: str) -> bool:
+    """Deletes a single resume analysis details by ID from 'resume_history'."""
+    db = get_firestore_client()
+    if db is None:
+        if "resume_history" in _in_memory_db:
+            _in_memory_db["resume_history"] = [r for r in _in_memory_db["resume_history"] if r.get("resumeId") != resume_id]
+        return True
+        
+    try:
+        db.collection("resume_history").document(resume_id).delete()
+        if "resume_history" in _in_memory_db:
+            _in_memory_db["resume_history"] = [r for r in _in_memory_db["resume_history"] if r.get("resumeId") != resume_id]
+        return True
+    except Exception as e:
+        logger.error("Failed to delete resume from Firestore: %s", str(e))
+        if "resume_history" in _in_memory_db:
+            _in_memory_db["resume_history"] = [r for r in _in_memory_db["resume_history"] if r.get("resumeId") != resume_id]
+        return True
 
 def update_dsa_streak(user_id: str) -> int:
     """Updates the user's daily problem-solving streak and returns the new streak value."""
